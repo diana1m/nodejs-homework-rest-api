@@ -1,16 +1,23 @@
-const contactsService = require('../services/contactService');
+const {
+    listContactsService,
+    getContactByIdService, 
+    addContactService, 
+    removeContactService, 
+    updateContactService, 
+    updateStatusContactService} = require('../services/contactService');
 const {HttpError} = require("../helpers");
 const ctrlWrapper = require("../decorators/ctrlWrapper");
 
 const getContacts = ctrlWrapper(async (req, res) => {
+    const {_id: owner} = req.user;
     const {page = 1, limit = 10} = req.query;
-    const result = await contactsService.listContactsService(page, limit);
+    const result = await listContactsService(page, limit, owner);
     res.status(200).json(result)
 })
 
 const getContactById = ctrlWrapper(async (req, res) => {
     const {contactId} = req.params;
-    const result = await contactsService.getContactByIdService(contactId);
+    const result = await getContactByIdService(contactId);
     if (!result) {
       throw new HttpError(404, `Contact with ${contactId} not found`);
     }
@@ -18,13 +25,14 @@ const getContactById = ctrlWrapper(async (req, res) => {
 })
 
 const addContact = ctrlWrapper(async (req, res) => {
-    const result = await contactsService.addContactService(req.body);
+    const {_id: owner} = req.user;
+    const result = await addContactService({...req.body, owner});
     res.status(201).json(result);
 })
 
 const deleteContact = ctrlWrapper(async (req, res) => {
     const {contactId} = req.params;
-    const result = await contactsService.removeContactService(contactId);
+    const result = await removeContactService(contactId);
     if (!result) {
       throw new HttpError(404, `Contact with ${contactId} not found`);
     }
@@ -33,7 +41,7 @@ const deleteContact = ctrlWrapper(async (req, res) => {
 
 const updateContact = ctrlWrapper(async (req, res) => {
     const { contactId } = req.params;
-    const result = await contactsService.updateContactService(contactId, req.body);
+    const result = await updateContactService(contactId, req.body);
     if (!result) {
         throw new HttpError(404, `Contact with ${contactId} not found`);
     }
@@ -42,7 +50,7 @@ const updateContact = ctrlWrapper(async (req, res) => {
 
 const updateStatusContact = ctrlWrapper(async (req, res) => {
     const {contactId} = req.params;
-    const result = await contactsService.updateStatusContactService(contactId, req.body);
+    const result = await updateStatusContactService(contactId, req.body);
     if (!result) {
         throw new HttpError(404, `Contact with ${contactId} not found`);
     }
