@@ -3,8 +3,9 @@ const router = express.Router();
 
 const validateBody = require('../../decorators/validateBody');
 const { userValidationSchema } = require('../../schemas/userValidationSchema');
-const {register, login, getCurrent, logout} = require("../../controllers/authControllers");
+const {register, login, getCurrent, logout, updateAvatar} = require("../../controllers/authControllers");
 const authenticate = require("../../middlewares/authenticate");
+const upload = require("../../middlewares/upload");
 
 router
 .route("/register")
@@ -21,5 +22,9 @@ router
 router
 .route("/logout")
 .post(authenticate, logout);
+
+router
+.route("/users/avatars")
+.patch(authenticate, upload.single("avatar"), updateAvatar);
 
 module.exports = router
