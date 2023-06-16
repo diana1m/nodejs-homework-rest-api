@@ -1,12 +1,13 @@
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const {nanoid} = require("nanoid");
 
-const { HttpError } = require("../helpers");
+const { HttpError, sendEmail } = require("../helpers");
 const ctrlWrapper = require("../decorators/ctrlWrapper");
 const { User }= require("../models/users");
 
-const { SECRET_KEY } = process.env;
+const { SECRET_KEY, PROJECT_URL } = process.env;
 
 const register = ctrlWrapper(async (req, res) => {
     const {email, password} = req.body;
@@ -17,7 +18,17 @@ const register = ctrlWrapper(async (req, res) => {
 
     const hashPassword = await bcrypt.hash(password, 10);
 
-    const result = await User.create({...req.body, password: hashPassword});
+    const verificationCode = nanoid()
+
+    const result = await User.create({...req.body, password: hashPassword, verificationCode});
+
+    const verifyEmail = {
+        to: email,
+        subject: "Verify email",
+        html: `<a target="_blank" href="${PROJECT_URL}/api/auth/verify/${verificationCode}">Click to verify email</a>`
+    };
+
+    await sendEmail(verifyEmail);
 
     res.status(201).json({
         user:{
@@ -26,6 +37,45 @@ const register = ctrlWrapper(async (req, res) => {
         }
     })
 })
+
+
+const verify = ctrlWrapper( async(req, res)=> {
+    const {verificationCode} = req.params;
+    const user = await User.findOne({verificationCode});
+    if(!user) {
+        throw HttpError(404);
+    }
+    await User.findByIdAndUpdate(user._id, {verify: true, verificationCode: null});
+
+    res.json({
+        message: "Verify success"
+    })
+})
+
+
+const resendVerifyEmail = ctrlWrapper(async(req, res) => {
+    const {email} = req.body;
+    const user = await User.findOne({email});
+    if(!user) {
+        throw HttpError(404);
+    }
+    if(user.verify){
+        throw HttpError(400, "Verification has already been passed")
+    }
+    
+    const verifyEmail = {
+        to: email,
+        subject: "Verify email",
+        html: `<a target="_blank" href="${PROJECT_URL}/api/auth/verify/${user.verificationCode}">Click to verify email</a>`
+    };
+
+    await sendEmail(verifyEmail);
+
+    res.json({
+        message: "Verify email send"
+    })
+})
+
 
 const login = ctrlWrapper( async(req, res) => {
     const {email, password} = req.body;
@@ -39,6 +89,10 @@ const login = ctrlWrapper( async(req, res) => {
 
     if(!isPasswordCompare){
         throw new HttpError(401, "Email or password is wrong");
+    }
+    
+    if(!user.verify) {
+        throw new HttpError(401, "User is not verified");
     }
 
     const {_id: id} = user;
@@ -59,6 +113,7 @@ const login = ctrlWrapper( async(req, res) => {
     })
 })
 
+
 const getCurrent = ctrlWrapper( async(req, res) => {
     const {email, subscription} = req.user;
 
@@ -67,6 +122,7 @@ const getCurrent = ctrlWrapper( async(req, res) => {
         subscription,
     })
 })
+
 
 const logout = ctrlWrapper( async (req, res) => {
     const {_id} = req.user;
@@ -80,6 +136,8 @@ const logout = ctrlWrapper( async (req, res) => {
 
 module.exports = {
     register,
+    verify,
+    resendVerifyEmail,
     login,
     getCurrent, 
     logout,
