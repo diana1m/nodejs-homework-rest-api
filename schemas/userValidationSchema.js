@@ -5,4 +5,8 @@ const userValidationSchema = Joi.object({
     password: Joi.string().required("field password is required")
   });
 
-  module.exports = {userValidationSchema}
+const userEmailValidationSchema = Joi.object({
+  email: Joi.string().email().required("field email is required")
+});
+
+  module.exports = {userValidationSchema, userEmailValidationSchema}

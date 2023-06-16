@@ -16,10 +16,17 @@ const schema = new mongoose.Schema(
           enum: ["starter", "pro", "business"],
           default: "starter"
         },
+        token: String,
+        verify:{
+          type: Boolean,
+          default: false,
+        },
+        verificationCode: {
+          type: String,
+        },
         avatarURL:{
           type: String,
         },
-        token: String
     }, {timestamps: true}
 )
 
