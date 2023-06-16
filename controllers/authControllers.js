@@ -1,13 +1,20 @@
-
+const gravatar = require('gravatar');
+const Jimp = require("jimp");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const {nanoid} = require("nanoid");
 
 const { HttpError, sendEmail } = require("../helpers");
+
+const fs = require("fs/promises");
+const path = require("path");
+
 const ctrlWrapper = require("../decorators/ctrlWrapper");
 const { User }= require("../models/users");
 
 const { SECRET_KEY, PROJECT_URL } = process.env;
+
+const avatarPath = path.resolve("public", "avatars");
 
 const register = ctrlWrapper(async (req, res) => {
     const {email, password} = req.body;
@@ -18,9 +25,9 @@ const register = ctrlWrapper(async (req, res) => {
 
     const hashPassword = await bcrypt.hash(password, 10);
 
-    const verificationCode = nanoid()
-
-    const result = await User.create({...req.body, password: hashPassword, verificationCode});
+    const verificationCode = nanoid();
+    const avatarURL = gravatar.url(email);
+    const result = await User.create({...req.body, password: hashPassword,avatarURL, verificationCode});
 
     const verifyEmail = {
         to: email,
@@ -123,14 +130,35 @@ const getCurrent = ctrlWrapper( async(req, res) => {
     })
 })
 
+const logout = ctrlWrapper( async(req, res) => {
 
-const logout = ctrlWrapper( async (req, res) => {
     const {_id} = req.user;
 
     await User.findByIdAndUpdate(_id, {token: null});
 
     res.status(204).json({
         message: "Logout success"
+    })
+})
+
+const updateAvatar = ctrlWrapper( async(req, res) => {
+    const {_id: id} = req.user;
+
+    const {path: oldPath, originalname} = req.file;
+    const filename = `${id}_${originalname}`
+    const newPath = path.join(avatarPath, filename);
+
+    const image = await Jimp.read(oldPath);
+    image.resize(250, 250);
+    await image.writeAsync(oldPath);
+
+    await fs.rename(oldPath, newPath);
+    const avatarURL = path.join("avatars", filename);
+
+    await User.findByIdAndUpdate(id, {avatarURL});
+
+    res.json({
+        avatarURL,
     })
 })
 
@@ -141,4 +169,5 @@ module.exports = {
     login,
     getCurrent, 
     logout,
+    updateAvatar,
 }

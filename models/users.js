@@ -23,7 +23,10 @@ const schema = new mongoose.Schema(
         },
         verificationCode: {
           type: String,
-        }
+        },
+        avatarURL:{
+          type: String,
+        },
     }, {timestamps: true}
 )
 
